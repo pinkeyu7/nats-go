@@ -1,39 +1,39 @@
 version: "3.9"
 
 services:
-#  nats-server:
-#    container_name: server
-#    build:
-#      context: .
-#      dockerfile: server/Dockerfile
-#    deploy:
-#      resources:
-#        limits:
-#          cpus: "1"
-#          memory: 500M
-#        reservations:
-#          cpus: "0.5"
-#          memory: 300M
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      GIN_MODE: release
-#      NATS_URL: nats:4222
-#  nats-agent:
-#    container_name: agent
-#    build:
-#      context: .
-#      dockerfile: agent/Dockerfile
-#    deploy:
-#      resources:
-#        limits:
-#          cpus: "1"
-#          memory: 500M
-#        reservations:
-#          cpus: "0.5"
-#          memory: 300M
-#    environment:
-#      NATS_URL: nats:4222
+  nats-server:
+    container_name: server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
+        reservations:
+          cpus: "0.5"
+          memory: 300M
+    ports:
+      - "8080:8080"
+    environment:
+      GIN_MODE: release
+      NATS_URL: nats:4222
+  nats-agent:
+    container_name: agent
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
+        reservations:
+          cpus: "0.5"
+          memory: 300M
+    environment:
+      NATS_URL: nats:4222
   nats:
     image: nats:2.11
     container_name: nats

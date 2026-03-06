@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"log"
+	"nats-go/pkg/topic"
 	"nats-go/server/dto/model"
 
 	"github.com/nats-io/nats.go"
@@ -24,7 +25,7 @@ func NewTaskService(nc *nats.Conn) TaskServiceInterface {
 
 	var err error
 	// Subscribe to tasks subject
-	ts.sub, err = nc.Subscribe("tasks", func(msg *nats.Msg) {
+	ts.sub, err = nc.Subscribe(topic.TopicTasks, func(msg *nats.Msg) {
 		var task model.Task
 		if err := json.Unmarshal(msg.Data, &task); err != nil {
 			log.Printf("Error unmarshaling task: %v", err)

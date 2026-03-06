@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"nats-go/pkg/topic"
 	"nats-go/server/dto/model"
 	"nats-go/server/dto/req"
 
@@ -41,7 +42,7 @@ func (s *TaskService) SendTask(t *req.Task) error {
 	}
 
 	// Publish to NATS
-	if err := s.nc.Publish("tasks", data); err != nil {
+	if err := s.nc.Publish(topic.TopicTasks, data); err != nil {
 		logger.Errorf("Failed to publish task to NATS: %v", err)
 		return err
 	}

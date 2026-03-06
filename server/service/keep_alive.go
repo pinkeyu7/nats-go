@@ -2,6 +2,7 @@ package service
 
 import (
 	"log"
+	"nats-go/pkg/topic"
 
 	"github.com/nats-io/nats.go"
 )
@@ -22,7 +23,7 @@ func NewKeepAliveService(nc *nats.Conn) KeepAliveServiceInterface {
 
 	var err error
 	// Subscribe to tasks subject
-	ks.sub, err = nc.Subscribe("agent.Keep_alive", func(msg *nats.Msg) {
+	ks.sub, err = nc.Subscribe(topic.TopicAgentKeepAlive, func(msg *nats.Msg) {
 		log.Printf("Received keep-alive message: %s", string(msg.Data))
 	})
 	if err != nil {

@@ -1,6 +1,8 @@
 package topic
 
 const (
-	TopicTasks          = "tasks"
-	TopicAgentKeepAlive = "agent.Keep_alive"
+	TopicTasks          = "__topic__tasks"
+	TopicAgentKeepAlive = "__topic__agent.Keep_alive"
+
+	QueueTasks = "__queue__tasks"
 )

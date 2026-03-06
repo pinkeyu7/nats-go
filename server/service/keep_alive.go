@@ -1,9 +1,9 @@
 package service
 
 import (
-	"log"
 	"nats-go/pkg/topic"
 
+	"github.com/bytedance/gopkg/util/logger"
 	"github.com/nats-io/nats.go"
 )
 
@@ -24,20 +24,20 @@ func NewKeepAliveService(nc *nats.Conn) KeepAliveServiceInterface {
 	var err error
 	// Subscribe to tasks subject
 	ks.sub, err = nc.Subscribe(topic.TopicAgentKeepAlive, func(msg *nats.Msg) {
-		log.Printf("Received keep-alive message: %s", string(msg.Data))
+		logger.Infof("Received keep-alive message: %s", string(msg.Data))
 	})
 	if err != nil {
-		log.Fatalf("Error subscribing to tasks: %v", err)
+		logger.Fatalf("Error subscribing to tasks: %v", err)
 	}
 
-	log.Println("Agent is listening for tasks on 'tasks' subject...")
+	logger.Info("Agent is listening for tasks on 'tasks' subject...")
 
 	return ks
 }
 
 func (s *KeepAliveService) Close() error {
 	if err := s.sub.Unsubscribe(); err != nil {
-		log.Printf("Error unsubscribing: %v", err)
+		logger.Infof("Error unsubscribing: %v", err)
 		return err
 	}
 	return nil

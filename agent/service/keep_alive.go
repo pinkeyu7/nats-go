@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"log"
 	"nats-go/agent/config"
 	"nats-go/pkg/topic"
 	"time"
 
+	"github.com/bytedance/gopkg/util/logger"
 	"github.com/nats-io/nats.go"
 )
 
@@ -34,7 +34,7 @@ func (s *KeepAliveService) Start(ctx context.Context) {
 		case <-ticker.C:
 			// Publish a keep-alive message to the "keep-alive" subject
 			if err := s.nc.Publish(topic.TopicAgentKeepAlive, []byte(config.GetAgentID())); err != nil {
-				log.Println(err)
+				logger.Error(err)
 			}
 		case <-ctx.Done():
 			return

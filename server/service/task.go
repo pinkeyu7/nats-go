@@ -5,6 +5,7 @@ import (
 	"nats-go/pkg/topic"
 	"nats-go/server/dto/model"
 	"nats-go/server/dto/req"
+	"time"
 
 	"github.com/bytedance/gopkg/util/logger"
 	"github.com/google/uuid"
@@ -12,7 +13,7 @@ import (
 )
 
 type TaskServiceInterface interface {
-	SendTask(task *req.Task) error
+	SendTask(task *req.Task) (*model.Task, error)
 }
 
 type TaskService struct {
@@ -25,7 +26,7 @@ func NewTaskService(nc *nats.Conn) (TaskServiceInterface, error) {
 	}, nil
 }
 
-func (s *TaskService) SendTask(t *req.Task) error {
+func (s *TaskService) SendTask(t *req.Task) (*model.Task, error) {
 	task := &model.Task{
 		ID:          uuid.New().String(),
 		Name:        t.Name,
@@ -38,15 +39,24 @@ func (s *TaskService) SendTask(t *req.Task) error {
 	data, err := json.Marshal(task)
 	if err != nil {
 		logger.Errorf("Failed to marshal task: %v", err)
-		return err
+		return nil, err
 	}
 
-	// Publish to NATS
-	if err := s.nc.Publish(topic.TopicTasks, data); err != nil {
+	// Request to NATS
+	msg, err := s.nc.Request(topic.TopicTasks, data, 2*time.Second)
+	if err != nil {
 		logger.Errorf("Failed to publish task to NATS: %v", err)
-		return err
+		return nil, err
+	}
+
+	// Process response from NATS
+	res := model.Task{}
+	err = json.Unmarshal(msg.Data, &res)
+	if err != nil {
+		logger.Errorf("Failed to unmarshal response from NATS: %v", err)
+		return nil, err
 	}
 
 	logger.Infof("Task published successfully to NATS: %s", task.ID)
-	return nil
+	return &res, nil
 }

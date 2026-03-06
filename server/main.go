@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
-	"log"
 	"nats-go/server/api"
 	"nats-go/server/config"
 	"nats-go/server/route"
 	"nats-go/server/service"
 
+	"github.com/bytedance/gopkg/util/logger"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -21,14 +21,14 @@ func main() {
 	// init config
 	err := config.Init()
 	if err != nil {
-		log.Printf("Error initializing config: %v", err)
+		logger.Infof("Error initializing config: %v", err)
 		return
 	}
 
 	// init api env
 	err = api.InitEnv()
 	if err != nil {
-		log.Printf("Error initializing env: %v", err)
+		logger.Infof("Error initializing env: %v", err)
 		return
 	}
 	defer api.GetEnv().Close()
@@ -46,6 +46,6 @@ func main() {
 	// start server
 	err = r.Run(":" + port)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 	}
 }

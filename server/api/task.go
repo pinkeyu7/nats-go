@@ -27,11 +27,12 @@ func SendTask(c *gin.Context) {
 	}
 
 	// act
-	if err := ts.SendTask(t); err != nil {
+	res, err := ts.SendTask(t)
+	if err != nil {
 		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)
 		_ = c.Error(serviceErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, t)
+	c.JSON(http.StatusOK, res)
 }

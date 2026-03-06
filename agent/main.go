@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"nats-go/agent/api"
 	"nats-go/agent/config"
 	"nats-go/agent/service"
@@ -10,23 +9,24 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/bytedance/gopkg/util/logger"
 	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
-	log.Println("Agent is starting...")
+	logger.Info("Agent is starting...")
 
 	// init config
 	err := config.Init()
 	if err != nil {
-		log.Printf("Error initializing config: %v", err)
+		logger.Infof("Error initializing config: %v", err)
 		return
 	}
 
 	// init api env
 	err = api.InitEnv()
 	if err != nil {
-		log.Printf("Error initializing env: %v", err)
+		logger.Infof("Error initializing env: %v", err)
 		return
 	}
 	defer api.GetEnv().Close()
@@ -52,5 +52,5 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan
 
-	log.Println("Agent is shutting down...")
+	logger.Info("Agent is shutting down...")
 }

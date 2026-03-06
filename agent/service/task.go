@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
-	"nats-go/pkg/topic"
+	"nats-go/pkg/jetstream"
 	"nats-go/server/dto/model"
 
 	"github.com/bytedance/gopkg/util/logger"
 	"github.com/nats-io/nats.go"
+	js "github.com/nats-io/nats.go/jetstream"
 )
 
 type TaskServiceInterface interface {
@@ -14,32 +16,96 @@ type TaskServiceInterface interface {
 }
 
 type TaskService struct {
-	nc  *nats.Conn
-	sub *nats.Subscription
+	nc       *nats.Conn
+	js       js.JetStream
+	consumer js.Consumer
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
-func NewTaskService(nc *nats.Conn) TaskServiceInterface {
+func NewTaskService(nc *nats.Conn, jsContext js.JetStream) TaskServiceInterface {
 	ts := &TaskService{
 		nc: nc,
+		js: jsContext,
 	}
 
+	ts.ctx, ts.cancel = context.WithCancel(context.Background())
+
 	var err error
-	// Subscribe to tasks subject
-	ts.sub, err = nc.QueueSubscribe(topic.TopicTasks, topic.QueueTasks, func(msg *nats.Msg) {
+	// Get the consumer
+	ts.consumer, err = jsContext.Consumer(ts.ctx, jetstream.StreamTasks, jetstream.ConsumerTaskProcessor)
+	if err != nil {
+		logger.Fatalf("Error getting consumer: %v", err)
+	}
+
+	// Start consuming messages
+	go ts.consumeAsyncMessages()
+	go ts.consumeSyncMessages()
+
+	logger.Infof("Agent is listening for tasks via JetStream...")
+
+	return ts
+}
+
+func (s *TaskService) consumeAsyncMessages() {
+	logger.Infof("Starting to consume asynchronous tasks from JetStream...")
+
+	// Consume messages from the stream
+	cons, err := s.consumer.Consume(func(msg js.Msg) {
 		var task model.Task
-		if err := json.Unmarshal(msg.Data, &task); err != nil {
-			logger.Infof("Error unmarshaling task: %v", err)
+		if err := json.Unmarshal(msg.Data(), &task); err != nil {
+			logger.Errorf("Error unmarshaling task: %v", err)
+			// Acknowledge with NAK to indicate processing failure
+			if err := msg.Nak(); err != nil {
+				logger.Errorf("Error sending NAK: %v", err)
+			}
 			return
 		}
 
 		logger.Infof("Received task: ID=%s, Name=%s, Description=%s",
 			task.ID, task.Name, task.Description)
 
+		// Process the task
+		task = s.processTask(&task)
+
+		// Acknowledge successful processing
+		if err := msg.Ack(); err != nil {
+			logger.Errorf("Error acknowledging message: %v", err)
+			return
+		}
+
+		logger.Infof("Task %s acknowledged successfully", task.ID)
+	})
+
+	if err != nil {
+		logger.Fatalf("Error consuming messages: %v", err)
+	}
+
+	logger.Info("Agent is consuming asynchronous tasks from JetStream...")
+
+	// Wait for context cancellation
+	<-s.ctx.Done()
+	logger.Infof("Agent is stopping consumption of asynchronous tasks")
+	cons.Stop()
+}
+
+func (s *TaskService) consumeSyncMessages() {
+	logger.Infof("Starting to consume synchronous tasks from NATS...")
+
+	// Subscribe to tasks subject
+	sub, err := s.nc.QueueSubscribe(jetstream.SubjectTasksSync, jetstream.QueueTasksSync, func(msg *nats.Msg) {
+		logger.Infof("Received message: %s", msg.Data)
+		var task model.Task
+		if err := json.Unmarshal(msg.Data, &task); err != nil {
+			logger.Infof("Error unmarshaling task: %v", err)
+			return
+		}
+
 		// Process the task here
-		task = ts.processTask(&task)
+		t := s.processTask(&task)
 
 		// Encode task to JSON
-		data, err := json.Marshal(task)
+		data, err := json.Marshal(t)
 		if err != nil {
 			logger.Errorf("Failed to marshal task: %v", err)
 			return
@@ -49,21 +115,24 @@ func NewTaskService(nc *nats.Conn) TaskServiceInterface {
 		err = msg.Respond(data)
 		if err != nil {
 			logger.Infof("Error responding to task: %v", err)
+			return
 		}
 	})
 	if err != nil {
-		logger.Fatalf("Error subscribing to tasks: %v", err)
+		logger.Fatalf("Error subscribing to tasks subject: %v", err)
 	}
 
-	logger.Infof("Agent is listening for tasks on 'tasks' subject...")
+	logger.Info("Agent is subscribed to synchronous tasks subject...")
 
-	return ts
+	// Wait for context cancellation
+	<-s.ctx.Done()
+	logger.Infof("Agent is unsubscribed from tasks subject")
+	_ = sub.Unsubscribe()
 }
 
 func (s *TaskService) Close() {
-	if err := s.sub.Unsubscribe(); err != nil {
-		logger.Infof("Error unsubscribing: %v", err)
-	}
+	logger.Info("Closing TaskService...")
+	s.cancel()
 }
 
 func (s *TaskService) processTask(task *model.Task) model.Task {

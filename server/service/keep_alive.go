@@ -1,10 +1,11 @@
 package service
 
 import (
-	"nats-go/pkg/topic"
+	"context"
+	"nats-go/pkg/jetstream"
 
 	"github.com/bytedance/gopkg/util/logger"
-	"github.com/nats-io/nats.go"
+	js "github.com/nats-io/nats.go/jetstream"
 )
 
 type KeepAliveServiceInterface interface {
@@ -12,33 +13,58 @@ type KeepAliveServiceInterface interface {
 }
 
 type KeepAliveService struct {
-	nc  *nats.Conn
-	sub *nats.Subscription
+	js       js.JetStream
+	consumer js.Consumer
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
-func NewKeepAliveService(nc *nats.Conn) KeepAliveServiceInterface {
+func NewKeepAliveService(jsContext js.JetStream) KeepAliveServiceInterface {
 	ks := &KeepAliveService{
-		nc: nc,
+		js: jsContext,
 	}
+
+	ks.ctx, ks.cancel = context.WithCancel(context.Background())
 
 	var err error
-	// Subscribe to tasks subject
-	ks.sub, err = nc.Subscribe(topic.TopicAgentKeepAlive, func(msg *nats.Msg) {
-		logger.Infof("Received keep-alive message: %s", string(msg.Data))
-	})
+	// Get the consumer
+	ks.consumer, err = jsContext.Consumer(ks.ctx, jetstream.StreamHeartbeat, jetstream.ConsumerHeartbeatMonitor)
 	if err != nil {
-		logger.Fatalf("Error subscribing to tasks: %v", err)
+		logger.Fatalf("Error getting heartbeat consumer: %v", err)
 	}
 
-	logger.Info("Agent is listening for tasks on 'tasks' subject...")
+	// Start consuming messages
+	go ks.consumeHeartbeats()
+
+	logger.Info("Server is monitoring agent heartbeats via JetStream...")
 
 	return ks
 }
 
-func (s *KeepAliveService) Close() error {
-	if err := s.sub.Unsubscribe(); err != nil {
-		logger.Infof("Error unsubscribing: %v", err)
-		return err
+func (s *KeepAliveService) consumeHeartbeats() {
+	// Consume heartbeat messages from the stream
+	cons, err := s.consumer.Consume(func(msg js.Msg) {
+		agentID := string(msg.Data())
+		logger.Infof("Received keep-alive from agent: %s", agentID)
+
+		// Acknowledge successful processing
+		if err := msg.Ack(); err != nil {
+			logger.Errorf("Error acknowledging message: %v", err)
+			return
+		}
+	})
+
+	if err != nil {
+		logger.Fatalf("Error consuming heartbeat messages: %v", err)
 	}
+
+	// Wait for context cancellation
+	<-s.ctx.Done()
+	cons.Stop()
+}
+
+func (s *KeepAliveService) Close() error {
+	logger.Info("Closing KeepAliveService...")
+	s.cancel()
 	return nil
 }

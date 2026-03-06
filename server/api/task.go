@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SendTask(c *gin.Context) {
+func SendAsyncTask(c *gin.Context) {
 	t := &req.Task{}
 	if err := c.ShouldBindJSON(t); err != nil {
 		paramErr := er.NewAppErr(http.StatusBadRequest, er.ErrorParamInvalid, err.Error(), err)
@@ -19,7 +19,7 @@ func SendTask(c *gin.Context) {
 
 	// assert
 	apiEnv := GetEnv()
-	ts, err := service.NewTaskService(apiEnv.GetNC())
+	ts, err := service.NewTaskService(apiEnv.GetNC(), apiEnv.GetJS())
 	if err != nil {
 		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)
 		_ = c.Error(serviceErr)
@@ -27,7 +27,35 @@ func SendTask(c *gin.Context) {
 	}
 
 	// act
-	res, err := ts.SendTask(t)
+	res, err := ts.SendAsyncTask(t)
+	if err != nil {
+		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)
+		_ = c.Error(serviceErr)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func SendSyncTask(c *gin.Context) {
+	t := &req.Task{}
+	if err := c.ShouldBindJSON(t); err != nil {
+		paramErr := er.NewAppErr(http.StatusBadRequest, er.ErrorParamInvalid, err.Error(), err)
+		_ = c.Error(paramErr)
+		return
+	}
+
+	// assert
+	apiEnv := GetEnv()
+	ts, err := service.NewTaskService(apiEnv.GetNC(), apiEnv.GetJS())
+	if err != nil {
+		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)
+		_ = c.Error(serviceErr)
+		return
+	}
+
+	// act
+	res, err := ts.SendSyncTask(t)
 	if err != nil {
 		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)
 		_ = c.Error(serviceErr)

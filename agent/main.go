@@ -38,11 +38,11 @@ func main() {
 	apiEnv := api.GetEnv()
 
 	// start keep-alive service
-	ks := service.NewKeepAliveService(apiEnv.GetNC())
+	ks := service.NewKeepAliveService(apiEnv.GetJS())
 	go ks.Start(ctx)
 
 	// start task service
-	ts := service.NewTaskService(apiEnv.GetNC())
+	ts := service.NewTaskService(apiEnv.GetNC(), apiEnv.GetJS())
 	defer func() {
 		ts.Close()
 	}()

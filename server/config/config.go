@@ -19,24 +19,7 @@ var EnvShortName = map[string]string{
 	EnvLocalhost:   "local",
 }
 
-const (
-	PathImageUpload         = "./upload/image"
-	PathImageCompressUpload = "./upload/image_compress"
-
-	ExternalPathImageUpload = "/static/images"
-)
-
 func Init() error {
-	err := os.MkdirAll(PathImageUpload, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(PathImageCompressUpload, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

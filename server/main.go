@@ -6,6 +6,7 @@ import (
 	"nats-go/server/api"
 	"nats-go/server/config"
 	"nats-go/server/route"
+	"nats-go/server/service"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -31,6 +32,13 @@ func main() {
 		return
 	}
 	defer api.GetEnv().Close()
+
+	apiEnv := api.GetEnv()
+	// start keep-alive service
+	ks := service.NewKeepAliveService(apiEnv.GetNC())
+	defer func() {
+		_ = ks.Close()
+	}()
 
 	// init gin router
 	r := route.Init()

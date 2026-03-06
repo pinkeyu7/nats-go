@@ -30,7 +30,5 @@ func Init() *gin.Engine {
 	AgentV1(apiRoute)
 	TaskV1(apiRoute)
 
-	r.Static(config.ExternalPathImageUpload, config.PathImageCompressUpload)
-
 	return r
 }

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"nats-go/server/config"
+	"nats-go/agent/config"
 
 	"github.com/nats-io/nats.go"
 )

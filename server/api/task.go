@@ -18,8 +18,14 @@ func SendTask(c *gin.Context) {
 	}
 
 	// assert
-	ts := service.NewTaskService()
-
+	apiEnv := GetEnv()
+	ts, err := service.NewTaskService(apiEnv.nc)
+	if err != nil {
+		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)
+		_ = c.Error(serviceErr)
+		return
+	}
+	
 	// act
 	if err := ts.SendTask(t); err != nil {
 		serviceErr := er.NewAppErr(http.StatusInternalServerError, er.UnknownError, err.Error(), err)

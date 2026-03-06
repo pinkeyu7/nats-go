@@ -62,3 +62,11 @@ func GetCorsRule(origin string) bool {
 func GetDBPath() string {
 	return os.Getenv("DB_PATH")
 }
+
+func GetNatsURL() string {
+	url := os.Getenv("NATS_URL")
+	if url == "" {
+		return "nats://localhost:4222"
+	}
+	return url
+}

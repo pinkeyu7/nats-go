@@ -30,6 +30,7 @@ func main() {
 		log.Printf("Error initializing env: %v", err)
 		return
 	}
+	defer api.GetEnv().Close()
 
 	// init gin router
 	r := route.Init()

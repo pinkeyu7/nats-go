@@ -12,7 +12,7 @@ services:
     volumes:
       - nats-data:/data
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8222/healthz"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "4222"]
       interval: 10s
       timeout: 5s
       retries: 5
